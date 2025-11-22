@@ -28,12 +28,14 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
+        /* モーダル時のスクロール制御 */
         body.modal-open {
             overflow: hidden;
             position: fixed;
             width: 100%;
             height: 100%;
         }
+        /* スクロールバーを隠すがスクロールは許可 */
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -88,7 +90,7 @@
             Filter: (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>
         };
 
-        const STORAGE_KEY = 'friends_tracker_secure_v15_final';
+        const STORAGE_KEY = 'friends_tracker_secure_v18_final';
 
         // --- Constants & Utils ---
         const THEME_COLORS = [
@@ -175,6 +177,8 @@
         };
 
         // --- Components ---
+        
+        // SINGLE MODAL WRAPPER to prevent DOM thrashing and body scroll issues
         const Modal = ({ children, onClose }) => {
             useEffect(() => {
                 document.body.classList.add('modal-open');
@@ -193,9 +197,9 @@
         const SmartAvatar = ({ friend, size = "md", className = "" }) => {
             const [imgError, setImgError] = useState(false);
             useEffect(() => setImgError(false), [friend.twitterId, friend.customImage]);
+            const theme = THEME_COLORS[0];
             const sizeClasses = { xs: "w-6 h-6 text-xs", sm: "w-10 h-10 text-lg", md: "w-12 h-12 text-xl", lg: "w-24 h-24 text-4xl", xl: "w-28 h-28 text-5xl" };
             
-            // 1. Custom Image
             if (friend.customImage) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -203,7 +207,6 @@
                     </div>
                 );
             }
-            // 2. Twitter Image
             if (friend.twitterId && friend.twitterId.trim() !== '' && !imgError) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -211,9 +214,9 @@
                     </div>
                 );
             }
-            // 3. Fallback (Initials)
+            // Fallback to Initials (No emoji/color picker anymore)
             return (
-                <div className={`${sizeClasses[size]} bg-slate-100 text-slate-600 rounded-full flex items-center justify-center border border-slate-200 shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
+                <div className={`${sizeClasses[size]} ${theme.bg} ${theme.text} rounded-full flex items-center justify-center border ${theme.border} shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
                     {friend.name.charAt(0) || '?'}
                 </div>
             );
@@ -223,9 +226,20 @@
             if (tags.length === 0) return null;
             return (
                 <div className="flex overflow-x-auto py-2 px-4 gap-2 scrollbar-hide bg-white border-b border-slate-100 sticky top-[57px] z-20 shadow-sm">
-                    <button onClick={() => onSelectTag(null)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedTag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>すべて</button>
+                    <button 
+                        onClick={() => onSelectTag(null)} 
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedTag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}
+                    >
+                        すべて
+                    </button>
                     {tags.map(tag => (
-                        <button key={tag} onClick={() => onSelectTag(tag === selectedTag ? null : tag)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedTag === tag ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200'}`}>#{tag}</button>
+                        <button 
+                            key={tag} 
+                            onClick={() => onSelectTag(tag === selectedTag ? null : tag)}
+                            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedTag === tag ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200'}`}
+                        >
+                            #{tag}
+                        </button>
                     ))}
                 </div>
             );
@@ -332,6 +346,7 @@
                                     <div className="relative group"><span className="absolute left-3 top-3 text-slate-400"><Icons.Link size={14} /></span><input type="text" value={rawLink} onChange={handleLinkChange} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all text-xs" placeholder="https://x.com/..." /></div>
                                 </div>
                             </div>
+
                             <div><label className="block text-xs font-bold text-slate-500 mb-1">名前 <span className="text-red-500">*</span></label><input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all" placeholder="名前を入力" /></div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">誕生日</label>
@@ -491,7 +506,7 @@
                     <AutoBackupNotification friends={friends} />
                     <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm z-30 shrink-0 safe-top">
                         <button onClick={() => setIsBackupModalOpen(true)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><Icons.Settings size={24} /></button>
-                        <h1 className="text-lg font-bold text-slate-800">Friends Age</h1>
+                        <h1 className="text-lg font-bold text-slate-800">みんなのジェネレーション</h1>
                         <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:bg-slate-700 active:scale-95 transition-all"><Icons.Plus size={20} /></button>
                     </header>
                     
@@ -540,8 +555,16 @@
                         <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
-                    {(isAddModalOpen || (selectedFriend && isEditing)) && <Modal onClose={() => { setIsAddModalOpen(false); setIsEditing(false); }}><FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} /></Modal>}
-                    {selectedFriend && !isEditing && <Modal onClose={() => setSelectedFriend(null)}><FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} /></Modal>}
+                    {/* SINGLE MODAL WRAPPER: ここが重要！ */}
+                    {(isAddModalOpen || selectedFriend) && (
+                        <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
+                            {(isAddModalOpen || isEditing) 
+                                ? <FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} />
+                                : <FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} />
+                            }
+                        </Modal>
+                    )}
+
                     {isBackupModalOpen && <Modal onClose={() => setIsBackupModalOpen(false)}><BackupModal friends={friends} onRestore={handleRestore} onClose={() => setIsBackupModalOpen(false)} /></Modal>}
                     {selectedMonthData && <Modal onClose={() => setSelectedMonthData(null)}><MonthDetailList title={`${selectedMonthData.month}月生まれ`} people={selectedMonthData.people} onClose={() => setSelectedMonthData(null)} onSelect={(p) => { setSelectedMonthData(null); setSelectedFriend(p); }} /></Modal>}
                 </div>
