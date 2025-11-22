@@ -2,12 +2,12 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Friends Age</title>
     
-    <!-- iOS PWA Settings -->
+    <!-- iOS設定: ステータスバーを白背景・黒文字にして被りを防ぐ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/avataaars/png?seed=AppIcon&backgroundColor=b6e3f4">
 
@@ -20,19 +20,23 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
+        /* 安全な余白確保 */
         body {
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
+            /* iPhoneのノッチ（切り欠き）対応 */
+            padding-top: max(12px, env(safe-area-inset-top));
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
         }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        /* モーダル表示時に背景を固定 */
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden selection:bg-blue-100">
-    <div id="root" class="h-full"></div>
+<body class="bg-slate-50 text-slate-800 min-h-screen selection:bg-blue-100">
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
@@ -63,7 +67,7 @@
             Minus: (p) => <IconWrapper {...p}><line x1="5" x2="19" y1="12" y2="12"/></IconWrapper>
         };
 
-        const STORAGE_KEY = 'friends_tracker_secure_v5_family';
+        const STORAGE_KEY = 'friends_tracker_secure_v6_family';
 
         // Theme & Constants
         const THEME_COLORS = [
@@ -113,14 +117,22 @@
         };
 
         // --- Components ---
-        const Modal = ({ children, onClose }) => (
-            <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200 safe-bottom">
-                <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                    {children}
+        const Modal = ({ children, onClose }) => {
+            // モーダルが開いている間、bodyのスクロールを止める
+            useEffect(() => {
+                document.body.classList.add('modal-open');
+                return () => document.body.classList.remove('modal-open');
+            }, []);
+
+            return (
+                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm animate-in fade-in duration-200" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
+                    <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        {children}
+                    </div>
+                    <div className="absolute inset-0 -z-10" onClick={onClose}></div>
                 </div>
-                <div className="absolute inset-0 -z-10" onClick={onClose}></div>
-            </div>
-        );
+            );
+        };
 
         const SmartAvatar = ({ friend, size = "md", className = "" }) => {
             const [imgError, setImgError] = useState(false);
@@ -210,7 +222,7 @@
                 memo: initialData.memo || '',
                 colorTheme: initialData.colorTheme || 'Slate',
                 emoji: initialData.emoji || '',
-                family: initialData.family || [] // [{id, name, birthday, relation}]
+                family: initialData.family || [] 
             });
             const [rawLink, setRawLink] = useState(initialData.twitterId ? `https://x.com/${initialData.twitterId}` : '');
             const [showAdvancedIcon, setShowAdvancedIcon] = useState(false);
@@ -248,7 +260,7 @@
                         <h3 className="font-bold text-slate-800">{isNew ? '友達を追加' : '編集'}</h3>
                         <button onClick={onCancel}><Icons.X size={24} className="text-slate-400" /></button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         <div className="flex flex-col items-center justify-center mb-2">
                             <SmartAvatar friend={formData} size="lg" className="mb-3" />
                             {!formData.twitterId && (
@@ -314,7 +326,7 @@
                                     })}
                                 </div>
                                 <div className="flex gap-2">
-                                    <input type="text" value={famName} onChange={e => setFamName(e.target.value)} placeholder="名前 (例: 太郎)" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
+                                    <input type="text" value={famName} onChange={e => setFamName(e.target.value)} placeholder="名前" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
                                     <input type="date" value={famBirthday} onChange={e => setFamBirthday(e.target.value)} className="w-28 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
                                 </div>
                                 <div className="flex gap-2 mt-2">
@@ -345,7 +357,7 @@
                         {friend.twitterId && <img src={`https://unavatar.io/twitter/${friend.twitterId}`} className="w-full h-full object-cover opacity-30 blur-md scale-110" alt="" />}
                         <button onClick={onClose} className="absolute top-3 right-3 p-2 bg-black/10 hover:bg-black/20 text-slate-700 rounded-full transition-colors backdrop-blur-sm"><Icons.X size={20} /></button>
                     </div>
-                    <div className="px-6 pb-6 flex-1 overflow-y-auto no-scrollbar">
+                    <div className="px-6 pb-6 flex-1 overflow-y-auto">
                         <div className="relative -mt-14 mb-4 flex justify-between items-end">
                             <div className="p-1.5 bg-white rounded-full shadow-sm"><SmartAvatar friend={friend} size="xl" /></div>
                             <button onClick={onEdit} className="mb-2 flex items-center gap-1 px-4 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform"><Icons.Edit2 size={14} /> 編集</button>
@@ -460,12 +472,15 @@
 
             return (
                 <div className="h-full flex flex-col">
-                    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm flex-shrink-0 z-30">
+                     {/* Header: Stickyにすることで画面上部に固定されつつスクロールに追従しない */}
+                    <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm z-30">
                         <button onClick={() => setIsBackupModalOpen(true)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><Icons.Settings size={24} /></button>
                         <h1 className="text-lg font-bold text-slate-800">Friends Age</h1>
                         <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:bg-slate-700 active:scale-95 transition-all"><Icons.Plus size={20} /></button>
                     </header>
-                    <main className="flex-1 overflow-y-auto p-4 space-y-8 no-scrollbar pb-24">
+
+                    {/* Main Content: 普通のdivとして配置 */}
+                    <main className="flex-1 p-4 space-y-8 pb-24">
                         {friendsByAge.map((group) => (
                             <div key={group.age} className="relative flex gap-4">
                                 <div className="flex flex-col items-center pt-2 w-14 flex-shrink-0">
