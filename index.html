@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     
-    <!-- ホーム画面アイコン: 「みん」改行「ジェネ」 (SVG Data URI) -->
+    <!-- ホーム画面アイコン -->
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjojYjZlM2Y0Ij4KICA8dGV4dCB4PSI1MCUiIHk9IjQ1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXdlaWdodD0ibWVkaXVtIiBmb250LXNpemU9IjE4MCI+44G/44K3PC90ZXh0PgogIDx0ZXh0IHg9IjUwJSIgeT0iODUlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjE1MCI+44Kjj4Kn44ONPC90ZXh0Pgo8L3N2Zz4=">
 
     <!-- Tailwind CSS -->
@@ -28,14 +28,12 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
-        /* モーダル時のスクロール制御 */
         body.modal-open {
             overflow: hidden;
             position: fixed;
             width: 100%;
             height: 100%;
         }
-        /* スクロールバーを隠すがスクロールは許可 */
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -87,14 +85,15 @@
             XLogo: (p) => <svg viewBox="0 0 24 24" width={p.size||20} height={p.size||20} fill="currentColor" className={p.className}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
             Shield: (p) => <IconWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconWrapper>,
             Image: (p) => <IconWrapper {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconWrapper>,
-            Filter: (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>
+            Filter: (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>,
+            FileText: (p) => <IconWrapper {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></IconWrapper>
         };
 
-        const STORAGE_KEY = 'friends_tracker_secure_v18_final';
+        const STORAGE_KEY = 'friends_tracker_secure_v19_filebackup';
 
         // --- Constants & Utils ---
         const THEME_COLORS = [
-            { name: 'Slate', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' } // Default
+            { name: 'Slate', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' }
         ];
 
         const calculateAge = (birthday) => {
@@ -195,10 +194,9 @@
         const SmartAvatar = ({ friend, size = "md", className = "" }) => {
             const [imgError, setImgError] = useState(false);
             useEffect(() => setImgError(false), [friend.twitterId, friend.customImage]);
-            const theme = THEME_COLORS[0]; // Use default slate theme since we removed picker
+            const theme = THEME_COLORS[0];
             const sizeClasses = { xs: "w-6 h-6 text-xs", sm: "w-10 h-10 text-lg", md: "w-12 h-12 text-xl", lg: "w-24 h-24 text-4xl", xl: "w-28 h-28 text-5xl" };
             
-            // 1. Custom Image
             if (friend.customImage) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -206,7 +204,6 @@
                     </div>
                 );
             }
-            // 2. Twitter Image
             if (friend.twitterId && friend.twitterId.trim() !== '' && !imgError) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -214,7 +211,6 @@
                     </div>
                 );
             }
-            // 3. Fallback (Initials)
             return (
                 <div className={`${sizeClasses[size]} ${theme.bg} ${theme.text} rounded-full flex items-center justify-center border ${theme.border} shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
                     {friend.name.charAt(0) || '?'}
@@ -237,15 +233,29 @@
         const AutoBackupNotification = ({ friends }) => {
             const [status, setStatus] = useState('idle');
             const [isVisible, setIsVisible] = useState(true);
-            const handleCopy = () => {
+            
+            // ファイルダウンロード処理
+            const handleFileBackup = () => {
                 const json = JSON.stringify(friends);
-                navigator.clipboard.writeText(json).then(() => { setStatus('copied'); setTimeout(() => setIsVisible(false), 5000); }).catch(() => alert('コピー失敗'));
+                const blob = new Blob([json], {type: "text/json;charset=utf-8"});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
+                link.href = url;
+                link.download = `min_gene_backup_${date}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                setStatus('copied');
+                setTimeout(() => setIsVisible(false), 5000);
             };
+
             if (!isVisible || friends.length === 0) return null;
             return (
                 <div className="fixed top-0 left-0 right-0 z-[100] p-4 safe-top pointer-events-none animate-slide-down">
-                    <button onClick={handleCopy} className={`pointer-events-auto w-full max-w-md mx-auto shadow-lg rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold transition-all transform active:scale-95 border ${status === 'copied' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                        {status === 'copied' ? <><Icons.CheckCircle2 size={18} /> コピーしました！メモ帳に保存してください</> : <><Icons.Shield size={18} /> タップしてバックアップをコピー (データ保護)</>}
+                    <button onClick={handleFileBackup} className={`pointer-events-auto w-full max-w-md mx-auto shadow-lg rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold transition-all transform active:scale-95 border ${status === 'copied' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {status === 'copied' ? <><Icons.CheckCircle2 size={18} /> ファイルを保存しました！</> : <><Icons.Shield size={18} /> タップしてバックアップを保存 (推奨)</>}
                     </button>
                 </div>
             );
@@ -255,11 +265,42 @@
             const [jsonStr, setJsonStr] = useState('');
             const [mode, setMode] = useState('export');
             const [message, setMessage] = useState('');
+            const fileInputRef = useRef(null);
+
             useEffect(() => { if (mode === 'export') setJsonStr(JSON.stringify(friends)); else setJsonStr(''); setMessage(''); }, [mode, friends]);
+            
             const handleCopy = () => { navigator.clipboard.writeText(jsonStr); setMessage('コピーしました！'); };
+            
+            // ファイル保存
+            const handleFileDownload = () => {
+                const blob = new Blob([jsonStr], {type: "text/json;charset=utf-8"});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
+                link.href = url;
+                link.download = `min_gene_backup_${date}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setMessage('ファイルを保存しました！');
+            };
+
+            // ファイル読み込み
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setJsonStr(e.target.result);
+                    setMessage('ファイルを読み込みました。「復元実行」を押してください。');
+                };
+                reader.readAsText(file);
+            };
+
             const handleRestore = () => {
                 try { const parsed = JSON.parse(jsonStr); if (Array.isArray(parsed) && window.confirm('上書きしますか？')) { onRestore(parsed); onClose(); } else { setMessage('形式エラー'); } } catch (e) { setMessage('読み込み失敗'); }
             };
+
             return (
                 <div className="flex flex-col h-full max-h-[80vh]">
                     <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -272,10 +313,38 @@
                             <button onClick={() => setMode('export')} className={`flex-1 py-2 text-sm font-bold rounded-md ${mode === 'export' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><Icons.Download size={16} /> バックアップ</button>
                             <button onClick={() => setMode('import')} className={`flex-1 py-2 text-sm font-bold rounded-md ${mode === 'import' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><Icons.Upload size={16} /> 復元</button>
                         </div>
+                        
                         {mode === 'export' ? (
-                            <div className="space-y-4"><p className="text-sm text-slate-600">下のテキストをコピーして保存してください。</p><textarea readOnly value={jsonStr} className="w-full h-40 p-3 text-xs bg-slate-50 border rounded-xl font-mono" /><button onClick={handleCopy} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:bg-blue-700"><Icons.Copy size={18} /> コピー</button></div>
+                            <div className="space-y-6">
+                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                                    <p className="text-sm font-bold text-blue-800 mb-2">推奨：ファイルとして保存</p>
+                                    <p className="text-xs text-blue-600 mb-4">全データを1つのファイルにまとめて保存します。<br/>写真のように管理できて簡単です。</p>
+                                    <button onClick={handleFileDownload} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:bg-blue-700 shadow-sm">
+                                        <Icons.FileText size={18} /> ファイルに保存
+                                    </button>
+                                </div>
+                                <div className="border-t pt-4">
+                                    <p className="text-xs text-slate-400 mb-2">またはテキストとしてコピー:</p>
+                                    <textarea readOnly value={jsonStr} className="w-full h-24 p-3 text-xs bg-slate-50 border rounded-xl font-mono mb-2" />
+                                    <button onClick={handleCopy} className="w-full py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center justify-center gap-2"><Icons.Copy size={14} /> コピー</button>
+                                </div>
+                            </div>
                         ) : (
-                            <div className="space-y-4"><p className="text-sm text-slate-600">保存したテキストを貼り付けてください。</p><textarea value={jsonStr} onChange={(e) => setJsonStr(e.target.value)} className="w-full h-40 p-3 text-xs bg-white border-2 rounded-xl font-mono" /><button onClick={handleRestore} disabled={!jsonStr} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50"><Icons.Upload size={18} /> 復元実行</button></div>
+                            <div className="space-y-6">
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                                    <p className="text-sm font-bold text-slate-700 mb-2">ファイルから復元</p>
+                                    <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" ref={fileInputRef} />
+                                    <button onClick={() => fileInputRef.current.click()} className="w-full py-3 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 active:bg-slate-50 mb-2">
+                                        <Icons.FileText size={18} /> ファイルを選択...
+                                    </button>
+                                    <p className="text-[10px] text-slate-400">保存した .json ファイルを選んでください</p>
+                                </div>
+                                <div className="border-t pt-4">
+                                    <p className="text-xs text-slate-400 mb-2">またはテキストを貼り付け:</p>
+                                    <textarea value={jsonStr} onChange={(e) => setJsonStr(e.target.value)} className="w-full h-24 p-3 text-xs bg-white border-2 rounded-xl font-mono mb-4" />
+                                </div>
+                                <button onClick={handleRestore} disabled={!jsonStr} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50 shadow-md"><Icons.Upload size={18} /> 復元を実行</button>
+                            </div>
                         )}
                         {message && <div className="p-3 bg-green-50 text-green-600 rounded-lg text-sm font-bold text-center">{message}</div>}
                     </div>
@@ -288,6 +357,7 @@
                 id: initialData.id || '', name: initialData.name || '', twitterId: initialData.twitterId || '', customImage: initialData.customImage || '', birthday: initialData.birthday || '', isTentative: initialData.isTentative || false, memo: initialData.memo || '', family: initialData.family || [] 
             });
             const [rawLink, setRawLink] = useState(initialData.twitterId ? `https://x.com/${initialData.twitterId}` : '');
+            const [showAdvancedIcon, setShowAdvancedIcon] = useState(false);
             const [famId, setFamId] = useState(null);
             const [famName, setFamName] = useState('');
             const [famBirthday, setFamBirthday] = useState('');
@@ -319,6 +389,9 @@
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 safe-bottom">
                         <div className="flex flex-col items-center justify-center mb-2">
                             <SmartAvatar friend={formData} size="lg" className="mb-3" />
+                            {!formData.twitterId && !formData.customImage && (
+                                <button onClick={() => setShowAdvancedIcon(!showAdvancedIcon)} className="text-xs text-slate-400 underline hover:text-slate-600">アイコンの手動設定</button>
+                            )}
                         </div>
                         <div className="space-y-5">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
@@ -543,6 +616,7 @@
                         <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
+                    {/* SINGLE MODAL WRAPPER: ここが重要！ */}
                     {(isAddModalOpen || selectedFriend) && (
                         <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
                             {(isAddModalOpen || isEditing) 
