@@ -9,8 +9,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
-    <!-- ホーム画面アイコン: 「みん ジェネ」 -->
-    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=みん+ジェネ&background=b6e3f4&color=fff&size=512&font-size=0.33&bold=true">
+    
+    <!-- ホーム画面アイコン: 「みん」改行「ジェネ」 (SVG Data URI) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjojYjZlM2Y0Ij4KICA8dGV4dCB4PSI1MCUiIHk9IjQ1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXdlaWdodD0ibWVkaXVtIiBmb250LXNpemU9IjE4MCI+44G/44K3PC90ZXh0PgogIDx0ZXh0IHg9IjUwJSIgeT0iODUlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjE1MCI+44Kjj4Kn44ONPC90ZXh0Pgo8L3N2Zz4=">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -143,13 +144,6 @@
             });
         };
 
-        const extractTags = (memo) => {
-            if (!memo) return [];
-            const matches = memo.match(/#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g);
-            return matches ? matches.map(tag => tag.substring(1)) : [];
-        };
-
-        // Image Resize Utility (Restored)
         const resizeImage = (file) => {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -172,6 +166,12 @@
                 };
                 reader.readAsDataURL(file);
             });
+        };
+
+        const extractTags = (memo) => {
+            if (!memo) return [];
+            const matches = memo.match(/#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g);
+            return matches ? matches.map(tag => tag.substring(1)) : [];
         };
 
         // --- Components ---
@@ -285,30 +285,17 @@
                 id: initialData.id || '', name: initialData.name || '', twitterId: initialData.twitterId || '', customImage: initialData.customImage || '', birthday: initialData.birthday || '', isTentative: initialData.isTentative || false, memo: initialData.memo || '', family: initialData.family || [] 
             });
             const [rawLink, setRawLink] = useState(initialData.twitterId ? `https://x.com/${initialData.twitterId}` : '');
-            
-            // Family Edit State
+            const [showAdvancedIcon, setShowAdvancedIcon] = useState(false);
             const [famId, setFamId] = useState(null);
             const [famName, setFamName] = useState('');
             const [famBirthday, setFamBirthday] = useState('');
             const [famRelation, setFamRelation] = useState('');
-
             const fileInputRef = useRef(null);
 
             const handleLinkChange = (e) => { const val = e.target.value; setRawLink(val); setFormData(prev => ({ ...prev, twitterId: extractTwitterId(val) })); };
+            const handleImageUpload = async (e) => { const file = e.target.files[0]; if (file) { const resized = await resizeImage(file); setFormData(prev => ({ ...prev, customImage: resized })); } };
+            const removeCustomImage = () => { setFormData(prev => ({ ...prev, customImage: '' })); if (fileInputRef.current) fileInputRef.current.value = ''; };
             
-            const handleImageUpload = async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const resizedBase64 = await resizeImage(file);
-                    setFormData(prev => ({ ...prev, customImage: resizedBase64 }));
-                }
-            };
-
-            const removeCustomImage = () => {
-                setFormData(prev => ({ ...prev, customImage: '' }));
-                if (fileInputRef.current) fileInputRef.current.value = '';
-            };
-
             const saveFamilyMember = () => {
                 if(!famName) return;
                 let newFamily = [...formData.family];
@@ -332,37 +319,19 @@
                             <SmartAvatar friend={formData} size="lg" className="mb-3" />
                         </div>
                         <div className="space-y-5">
-                            {/* ICON SETTINGS */}
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                                 <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1"><Icons.Image size={14} /> アイコン設定</h4>
-                                
-                                {/* 1. Image Upload */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 mb-1">画像アップロード (優先)</label>
                                     {formData.customImage ? (
-                                        <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200">
-                                            <img src={formData.customImage} className="w-8 h-8 rounded-full object-cover" />
-                                            <span className="text-xs text-green-600 font-bold flex-1">画像を保存済み</span>
-                                            <button onClick={removeCustomImage} className="text-red-400 text-xs hover:underline">削除</button>
-                                        </div>
-                                    ) : (
-                                        <input 
-                                            type="file" 
-                                            accept="image/*"
-                                            ref={fileInputRef}
-                                            onChange={handleImageUpload}
-                                            className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
-                                        />
-                                    )}
+                                        <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200"><img src={formData.customImage} className="w-8 h-8 rounded-full object-cover" /><span className="text-xs text-green-600 font-bold flex-1">画像を保存済み</span><button onClick={removeCustomImage} className="text-red-400 text-xs hover:underline">削除</button></div>
+                                    ) : <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300" />}
                                 </div>
-
-                                {/* 2. Twitter Link */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 mb-1">Twitter/X リンク （画像が自動反映されます）</label>
                                     <div className="relative group"><span className="absolute left-3 top-3 text-slate-400"><Icons.Link size={14} /></span><input type="text" value={rawLink} onChange={handleLinkChange} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all text-xs" placeholder="https://x.com/..." /></div>
                                 </div>
                             </div>
-
                             <div><label className="block text-xs font-bold text-slate-500 mb-1">名前 <span className="text-red-500">*</span></label><input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all" placeholder="名前を入力" /></div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">誕生日</label>
@@ -522,7 +491,7 @@
                     <AutoBackupNotification friends={friends} />
                     <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm z-30 shrink-0 safe-top">
                         <button onClick={() => setIsBackupModalOpen(true)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><Icons.Settings size={24} /></button>
-                        <h1 className="text-lg font-bold text-slate-800">みんなのジェネレーション</h1>
+                        <h1 className="text-lg font-bold text-slate-800">Friends Age</h1>
                         <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:bg-slate-700 active:scale-95 transition-all"><Icons.Plus size={20} /></button>
                     </header>
                     
@@ -571,15 +540,8 @@
                         <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
-                    {(isAddModalOpen || selectedFriend) && (
-                        <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
-                            {(isAddModalOpen || isEditing) 
-                                ? <FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} />
-                                : <FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} />
-                            }
-                        </Modal>
-                    )}
-
+                    {(isAddModalOpen || (selectedFriend && isEditing)) && <Modal onClose={() => { setIsAddModalOpen(false); setIsEditing(false); }}><FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} /></Modal>}
+                    {selectedFriend && !isEditing && <Modal onClose={() => setSelectedFriend(null)}><FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} /></Modal>}
                     {isBackupModalOpen && <Modal onClose={() => setIsBackupModalOpen(false)}><BackupModal friends={friends} onRestore={handleRestore} onClose={() => setIsBackupModalOpen(false)} /></Modal>}
                     {selectedMonthData && <Modal onClose={() => setSelectedMonthData(null)}><MonthDetailList title={`${selectedMonthData.month}月生まれ`} people={selectedMonthData.people} onClose={() => setSelectedMonthData(null)} onSelect={(p) => { setSelectedMonthData(null); setSelectedFriend(p); }} /></Modal>}
                 </div>
