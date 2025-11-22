@@ -177,8 +177,6 @@
         };
 
         // --- Components ---
-        
-        // SINGLE MODAL WRAPPER to prevent DOM thrashing and body scroll issues
         const Modal = ({ children, onClose }) => {
             useEffect(() => {
                 document.body.classList.add('modal-open');
@@ -197,9 +195,10 @@
         const SmartAvatar = ({ friend, size = "md", className = "" }) => {
             const [imgError, setImgError] = useState(false);
             useEffect(() => setImgError(false), [friend.twitterId, friend.customImage]);
-            const theme = THEME_COLORS[0];
+            const theme = THEME_COLORS[0]; // Use default slate theme since we removed picker
             const sizeClasses = { xs: "w-6 h-6 text-xs", sm: "w-10 h-10 text-lg", md: "w-12 h-12 text-xl", lg: "w-24 h-24 text-4xl", xl: "w-28 h-28 text-5xl" };
             
+            // 1. Custom Image
             if (friend.customImage) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -207,6 +206,7 @@
                     </div>
                 );
             }
+            // 2. Twitter Image
             if (friend.twitterId && friend.twitterId.trim() !== '' && !imgError) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -214,7 +214,7 @@
                     </div>
                 );
             }
-            // Fallback to Initials (No emoji/color picker anymore)
+            // 3. Fallback (Initials)
             return (
                 <div className={`${sizeClasses[size]} ${theme.bg} ${theme.text} rounded-full flex items-center justify-center border ${theme.border} shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
                     {friend.name.charAt(0) || '?'}
@@ -226,20 +226,9 @@
             if (tags.length === 0) return null;
             return (
                 <div className="flex overflow-x-auto py-2 px-4 gap-2 scrollbar-hide bg-white border-b border-slate-100 sticky top-[57px] z-20 shadow-sm">
-                    <button 
-                        onClick={() => onSelectTag(null)} 
-                        className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedTag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}
-                    >
-                        すべて
-                    </button>
+                    <button onClick={() => onSelectTag(null)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedTag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>すべて</button>
                     {tags.map(tag => (
-                        <button 
-                            key={tag} 
-                            onClick={() => onSelectTag(tag === selectedTag ? null : tag)}
-                            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedTag === tag ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200'}`}
-                        >
-                            #{tag}
-                        </button>
+                        <button key={tag} onClick={() => onSelectTag(tag === selectedTag ? null : tag)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedTag === tag ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200'}`}>#{tag}</button>
                     ))}
                 </div>
             );
@@ -299,7 +288,6 @@
                 id: initialData.id || '', name: initialData.name || '', twitterId: initialData.twitterId || '', customImage: initialData.customImage || '', birthday: initialData.birthday || '', isTentative: initialData.isTentative || false, memo: initialData.memo || '', family: initialData.family || [] 
             });
             const [rawLink, setRawLink] = useState(initialData.twitterId ? `https://x.com/${initialData.twitterId}` : '');
-            const [showAdvancedIcon, setShowAdvancedIcon] = useState(false);
             const [famId, setFamId] = useState(null);
             const [famName, setFamName] = useState('');
             const [famBirthday, setFamBirthday] = useState('');
@@ -550,12 +538,11 @@
                         )}
                     </main>
 
-                    <div className="bg-white border-t border-slate-200 shrink-0 safe-bottom flex justify-around p-2">
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shrink-0 safe-bottom flex justify-around p-2 z-40">
                         <button onClick={() => setTab('age')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'age' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.Users size={20} /> 年齢順</button>
                         <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
-                    {/* SINGLE MODAL WRAPPER: ここが重要！ */}
                     {(isAddModalOpen || selectedFriend) && (
                         <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
                             {(isAddModalOpen || isEditing) 
