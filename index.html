@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Friends Age</title>
+    <title>みんなのジェネレーション</title>
     
     <!-- iOS PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
-    <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/avataaars/png?seed=AppIcon&backgroundColor=b6e3f4">
+    <!-- ホーム画面アイコン: 「みん ジェネ」 -->
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=みん+ジェネ&background=b6e3f4&color=fff&size=512&font-size=0.33&bold=true">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,14 +27,12 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
-        /* モーダル時のスクロール制御 */
         body.modal-open {
             overflow: hidden;
             position: fixed;
             width: 100%;
             height: 100%;
         }
-        /* スクロールバーを隠すがスクロールは許可 */
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
@@ -41,13 +40,20 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-down {
+            animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col selection:bg-blue-100">
     <div id="root" class="h-full flex flex-col"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
 
         // --- Icons ---
         const IconWrapper = ({ children, size = 20, className = "" }) => (
@@ -75,26 +81,19 @@
             Refresh: (p) => <IconWrapper {...p}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></IconWrapper>,
             Users: (p) => <IconWrapper {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconWrapper>,
             List: (p) => <IconWrapper {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></IconWrapper>,
-            XLogo: (p) => <svg viewBox="0 0 24 24" width={p.size||20} height={p.size||20} fill="currentColor" className={p.className}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            XLogo: (p) => <svg viewBox="0 0 24 24" width={p.size||20} height={p.size||20} fill="currentColor" className={p.className}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
+            Shield: (p) => <IconWrapper {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></IconWrapper>,
+            Image: (p) => <IconWrapper {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconWrapper>,
+            Filter: (p) => <IconWrapper {...p}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>
         };
 
-        const STORAGE_KEY = 'friends_tracker_secure_v7_final';
+        const STORAGE_KEY = 'friends_tracker_secure_v15_final';
 
-        // --- Constants ---
+        // --- Constants & Utils ---
         const THEME_COLORS = [
-            { name: 'Slate', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
-            { name: 'Red', bg: 'bg-red-100', text: 'text-red-600', border: 'border-red-200' },
-            { name: 'Orange', bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
-            { name: 'Amber', bg: 'bg-amber-100', text: 'text-amber-600', border: 'border-amber-200' },
-            { name: 'Green', bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
-            { name: 'Blue', bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
-            { name: 'Indigo', bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-200' },
-            { name: 'Purple', bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' },
-            { name: 'Pink', bg: 'bg-pink-100', text: 'text-pink-600', border: 'border-pink-200' },
+            { name: 'Slate', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' } // Default
         ];
-        const AVATAR_EMOJIS = ['😀', '😎', '🤓', '🥳', '🤔', '🥺', '🤠', '👽', '💩', '🐶', '🐱', '🦊', '🐻', '🐼', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦄', '🍺', '⚽', '🎮', '🎨', '🎤', '🎸', '📷', '💻', '✏️', '✈️'];
 
-        // --- Utils ---
         const calculateAge = (birthday) => {
             if (!birthday) return null;
             const birthDate = new Date(birthday);
@@ -132,32 +131,59 @@
             return input.replace('@', '').split('?')[0].split('/')[0].trim();
         };
 
-        // 家族を年齢順にソート（年齢が高い順、不明は最後）
         const sortFamily = (family) => {
             if (!family) return [];
             return [...family].sort((a, b) => {
                 const ageA = calculateAge(a.birthday);
                 const ageB = calculateAge(b.birthday);
-                if (ageA !== null && ageB !== null) return ageB - ageA; // 高い順
+                if (ageA !== null && ageB !== null) return ageB - ageA;
                 if (ageA !== null) return -1;
                 if (ageB !== null) return 1;
                 return 0;
             });
         };
 
+        const extractTags = (memo) => {
+            if (!memo) return [];
+            const matches = memo.match(/#[\w\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]+/g);
+            return matches ? matches.map(tag => tag.substring(1)) : [];
+        };
+
+        // Image Resize Utility (Restored)
+        const resizeImage = (file) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxSize = 150;
+                        if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } 
+                        else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+
         // --- Components ---
-        
-        // モーダル：確実にスクロール可能にするため構造を簡素化
         const Modal = ({ children, onClose }) => {
             useEffect(() => {
                 document.body.classList.add('modal-open');
                 return () => document.body.classList.remove('modal-open');
             }, []);
-
             return (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-                    <div className="absolute inset-0 bg-slate-900/60 pointer-events-auto backdrop-blur-sm transition-opacity" onClick={onClose} />
-                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 safe-bottom">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+                    <div className="relative z-50 bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200 safe-bottom overflow-hidden">
                         {children}
                     </div>
                 </div>
@@ -166,10 +192,18 @@
 
         const SmartAvatar = ({ friend, size = "md", className = "" }) => {
             const [imgError, setImgError] = useState(false);
-            useEffect(() => setImgError(false), [friend.twitterId]);
-            const theme = THEME_COLORS.find(t => t.name === friend.colorTheme) || THEME_COLORS[0];
+            useEffect(() => setImgError(false), [friend.twitterId, friend.customImage]);
             const sizeClasses = { xs: "w-6 h-6 text-xs", sm: "w-10 h-10 text-lg", md: "w-12 h-12 text-xl", lg: "w-24 h-24 text-4xl", xl: "w-28 h-28 text-5xl" };
             
+            // 1. Custom Image
+            if (friend.customImage) {
+                return (
+                    <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
+                        <img src={friend.customImage} alt={friend.name} className="w-full h-full object-cover" />
+                    </div>
+                );
+            }
+            // 2. Twitter Image
             if (friend.twitterId && friend.twitterId.trim() !== '' && !imgError) {
                 return (
                     <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0 relative ${className}`}>
@@ -177,42 +211,52 @@
                     </div>
                 );
             }
+            // 3. Fallback (Initials)
             return (
-                <div className={`${sizeClasses[size]} ${theme.bg} ${theme.text} rounded-full flex items-center justify-center border ${theme.border} shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
-                    {friend.emoji || friend.name.charAt(0) || '?'}
+                <div className={`${sizeClasses[size]} bg-slate-100 text-slate-600 rounded-full flex items-center justify-center border border-slate-200 shadow-sm flex-shrink-0 font-bold select-none ${className}`}>
+                    {friend.name.charAt(0) || '?'}
                 </div>
             );
         };
 
-        // --- Backup Modal ---
+        const TagList = ({ tags, selectedTag, onSelectTag }) => {
+            if (tags.length === 0) return null;
+            return (
+                <div className="flex overflow-x-auto py-2 px-4 gap-2 scrollbar-hide bg-white border-b border-slate-100 sticky top-[57px] z-20 shadow-sm">
+                    <button onClick={() => onSelectTag(null)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedTag ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>すべて</button>
+                    {tags.map(tag => (
+                        <button key={tag} onClick={() => onSelectTag(tag === selectedTag ? null : tag)} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${selectedTag === tag ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-600 border-slate-200'}`}>#{tag}</button>
+                    ))}
+                </div>
+            );
+        };
+
+        const AutoBackupNotification = ({ friends }) => {
+            const [status, setStatus] = useState('idle');
+            const [isVisible, setIsVisible] = useState(true);
+            const handleCopy = () => {
+                const json = JSON.stringify(friends);
+                navigator.clipboard.writeText(json).then(() => { setStatus('copied'); setTimeout(() => setIsVisible(false), 5000); }).catch(() => alert('コピー失敗'));
+            };
+            if (!isVisible || friends.length === 0) return null;
+            return (
+                <div className="fixed top-0 left-0 right-0 z-[100] p-4 safe-top pointer-events-none animate-slide-down">
+                    <button onClick={handleCopy} className={`pointer-events-auto w-full max-w-md mx-auto shadow-lg rounded-xl p-3 flex items-center justify-center gap-2 text-sm font-bold transition-all transform active:scale-95 border ${status === 'copied' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {status === 'copied' ? <><Icons.CheckCircle2 size={18} /> コピーしました！メモ帳に保存してください</> : <><Icons.Shield size={18} /> タップしてバックアップをコピー (データ保護)</>}
+                    </button>
+                </div>
+            );
+        };
+
         const BackupModal = ({ friends, onRestore, onClose }) => {
             const [jsonStr, setJsonStr] = useState('');
             const [mode, setMode] = useState('export');
             const [message, setMessage] = useState('');
-
-            useEffect(() => {
-                if (mode === 'export') setJsonStr(JSON.stringify(friends));
-                else setJsonStr('');
-                setMessage('');
-            }, [mode, friends]);
-
-            const handleCopy = () => {
-                navigator.clipboard.writeText(jsonStr);
-                setMessage('コピーしました！');
-            };
-
+            useEffect(() => { if (mode === 'export') setJsonStr(JSON.stringify(friends)); else setJsonStr(''); setMessage(''); }, [mode, friends]);
+            const handleCopy = () => { navigator.clipboard.writeText(jsonStr); setMessage('コピーしました！'); };
             const handleRestore = () => {
-                try {
-                    const parsed = JSON.parse(jsonStr);
-                    if (Array.isArray(parsed)) {
-                        if(window.confirm('現在のデータは上書きされます。よろしいですか？')) {
-                            onRestore(parsed);
-                            onClose();
-                        }
-                    } else { setMessage('形式エラー'); }
-                } catch (e) { setMessage('読み込み失敗'); }
+                try { const parsed = JSON.parse(jsonStr); if (Array.isArray(parsed) && window.confirm('上書きしますか？')) { onRestore(parsed); onClose(); } else { setMessage('形式エラー'); } } catch (e) { setMessage('読み込み失敗'); }
             };
-
             return (
                 <div className="flex flex-col h-full max-h-[80vh]">
                     <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -220,22 +264,15 @@
                         <button onClick={onClose}><Icons.X size={24} className="text-slate-400" /></button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 safe-bottom">
+                        <p className="text-xs text-slate-400 mt-1 text-center">アプリがアップデートされたとき（不定期）や機種変更の時に使います。</p>
                         <div className="flex gap-2 p-1 bg-slate-100 rounded-lg shrink-0">
-                            <button onClick={() => setMode('export')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors flex items-center justify-center gap-2 ${mode === 'export' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Icons.Download size={16} /> バックアップ</button>
-                            <button onClick={() => setMode('import')} className={`flex-1 py-2 text-sm font-bold rounded-md transition-colors flex items-center justify-center gap-2 ${mode === 'import' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><Icons.Upload size={16} /> 復元</button>
+                            <button onClick={() => setMode('export')} className={`flex-1 py-2 text-sm font-bold rounded-md ${mode === 'export' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><Icons.Download size={16} /> バックアップ</button>
+                            <button onClick={() => setMode('import')} className={`flex-1 py-2 text-sm font-bold rounded-md ${mode === 'import' ? 'bg-white shadow-sm' : 'text-slate-500'}`}><Icons.Upload size={16} /> 復元</button>
                         </div>
                         {mode === 'export' ? (
-                            <div className="space-y-4">
-                                <p className="text-sm text-slate-600">下のテキストをコピーしてメモ帳に保存してください。</p>
-                                <textarea readOnly value={jsonStr} className="w-full h-40 p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-mono focus:outline-none" />
-                                <button onClick={handleCopy} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:bg-blue-700"><Icons.Copy size={18} /> コピー</button>
-                            </div>
+                            <div className="space-y-4"><p className="text-sm text-slate-600">下のテキストをコピーして保存してください。</p><textarea readOnly value={jsonStr} className="w-full h-40 p-3 text-xs bg-slate-50 border rounded-xl font-mono" /><button onClick={handleCopy} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:bg-blue-700"><Icons.Copy size={18} /> コピー</button></div>
                         ) : (
-                            <div className="space-y-4">
-                                <p className="text-sm text-slate-600">保存したテキストを貼り付けてください。</p>
-                                <textarea value={jsonStr} onChange={(e) => setJsonStr(e.target.value)} className="w-full h-40 p-3 text-xs bg-white border-2 border-blue-100 rounded-xl text-slate-800 font-mono focus:outline-none focus:border-blue-500" />
-                                <button onClick={handleRestore} disabled={!jsonStr} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"><Icons.Upload size={18} /> 復元実行</button>
-                            </div>
+                            <div className="space-y-4"><p className="text-sm text-slate-600">保存したテキストを貼り付けてください。</p><textarea value={jsonStr} onChange={(e) => setJsonStr(e.target.value)} className="w-full h-40 p-3 text-xs bg-white border-2 rounded-xl font-mono" /><button onClick={handleRestore} disabled={!jsonStr} className="w-full py-3 bg-red-500 text-white rounded-xl font-bold disabled:opacity-50"><Icons.Upload size={18} /> 復元実行</button></div>
                         )}
                         {message && <div className="p-3 bg-green-50 text-green-600 rounded-lg text-sm font-bold text-center">{message}</div>}
                     </div>
@@ -243,78 +280,45 @@
             );
         };
 
-        // --- Edit Form ---
         const FriendForm = ({ initialData = {}, onSave, onCancel, isNew }) => {
             const [formData, setFormData] = useState({
-                id: initialData.id || '',
-                name: initialData.name || '',
-                twitterId: initialData.twitterId || '',
-                birthday: initialData.birthday || '',
-                isTentative: initialData.isTentative || false,
-                memo: initialData.memo || '',
-                colorTheme: initialData.colorTheme || 'Slate',
-                emoji: initialData.emoji || '',
-                family: initialData.family || [] 
+                id: initialData.id || '', name: initialData.name || '', twitterId: initialData.twitterId || '', customImage: initialData.customImage || '', birthday: initialData.birthday || '', isTentative: initialData.isTentative || false, memo: initialData.memo || '', family: initialData.family || [] 
             });
             const [rawLink, setRawLink] = useState(initialData.twitterId ? `https://x.com/${initialData.twitterId}` : '');
-            const [showAdvancedIcon, setShowAdvancedIcon] = useState(false);
             
             // Family Edit State
-            const [famId, setFamId] = useState(null); // 編集中ならIDが入る
+            const [famId, setFamId] = useState(null);
             const [famName, setFamName] = useState('');
             const [famBirthday, setFamBirthday] = useState('');
             const [famRelation, setFamRelation] = useState('');
 
-            const handleLinkChange = (e) => {
-                const val = e.target.value;
-                setRawLink(val);
-                setFormData(prev => ({ ...prev, twitterId: extractTwitterId(val) }));
+            const fileInputRef = useRef(null);
+
+            const handleLinkChange = (e) => { const val = e.target.value; setRawLink(val); setFormData(prev => ({ ...prev, twitterId: extractTwitterId(val) })); };
+            
+            const handleImageUpload = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const resizedBase64 = await resizeImage(file);
+                    setFormData(prev => ({ ...prev, customImage: resizedBase64 }));
+                }
+            };
+
+            const removeCustomImage = () => {
+                setFormData(prev => ({ ...prev, customImage: '' }));
+                if (fileInputRef.current) fileInputRef.current.value = '';
             };
 
             const saveFamilyMember = () => {
                 if(!famName) return;
-                
                 let newFamily = [...formData.family];
-                const memberData = {
-                    id: famId || Date.now().toString(),
-                    name: famName,
-                    birthday: famBirthday,
-                    relation: famRelation
-                };
-
-                if (famId) {
-                    // Update
-                    newFamily = newFamily.map(m => m.id === famId ? memberData : m);
-                } else {
-                    // Add
-                    newFamily.push(memberData);
-                }
-
-                setFormData(prev => ({ ...prev, family: newFamily }));
-                // Reset
-                setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation('');
+                const member = { id: famId || Date.now().toString(), name: famName, birthday: famBirthday, relation: famRelation };
+                if (famId) newFamily = newFamily.map(m => m.id === famId ? member : m); else newFamily.push(member);
+                setFormData(prev => ({ ...prev, family: newFamily })); setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation('');
             };
-
-            const editFamilyMember = (member) => {
-                setFamId(member.id);
-                setFamName(member.name);
-                setFamBirthday(member.birthday);
-                setFamRelation(member.relation);
-            };
-
-            const removeFamilyMember = (e, id) => {
-                e.stopPropagation();
-                setFormData(prev => ({ ...prev, family: prev.family.filter(m => m.id !== id) }));
-                if (famId === id) {
-                    setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation('');
-                }
-            };
-
-            const cancelFamEdit = () => {
-                setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation('');
-            };
-
-            // 表示用ソート済み家族リスト
+            const editFamilyMember = (m) => { setFamId(m.id); setFamName(m.name); setFamBirthday(m.birthday); setFamRelation(m.relation); };
+            const removeFamilyMember = (e, id) => { e.stopPropagation(); setFormData(prev => ({ ...prev, family: prev.family.filter(m => m.id !== id) })); if (famId === id) { setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation(''); } };
+            const cancelFamEdit = () => { setFamId(null); setFamName(''); setFamBirthday(''); setFamRelation(''); };
             const sortedFamily = useMemo(() => sortFamily(formData.family), [formData.family]);
 
             return (
@@ -326,89 +330,61 @@
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 safe-bottom">
                         <div className="flex flex-col items-center justify-center mb-2">
                             <SmartAvatar friend={formData} size="lg" className="mb-3" />
-                            {!formData.twitterId && (
-                                <button onClick={() => setShowAdvancedIcon(!showAdvancedIcon)} className="text-xs text-slate-400 underline hover:text-slate-600">アイコンの手動設定</button>
-                            )}
                         </div>
                         <div className="space-y-5">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Twitter/X リンク</label>
-                                <div className="relative group">
-                                    <span className="absolute left-4 top-3.5 text-slate-400"><Icons.Link size={16} /></span>
-                                    <input type="text" value={rawLink} onChange={handleLinkChange} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all font-medium text-sm" placeholder="https://x.com/..." />
+                            {/* ICON SETTINGS */}
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                                <h4 className="text-xs font-bold text-slate-500 flex items-center gap-1"><Icons.Image size={14} /> アイコン設定</h4>
+                                
+                                {/* 1. Image Upload */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1">画像アップロード (優先)</label>
+                                    {formData.customImage ? (
+                                        <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-slate-200">
+                                            <img src={formData.customImage} className="w-8 h-8 rounded-full object-cover" />
+                                            <span className="text-xs text-green-600 font-bold flex-1">画像を保存済み</span>
+                                            <button onClick={removeCustomImage} className="text-red-400 text-xs hover:underline">削除</button>
+                                        </div>
+                                    ) : (
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            ref={fileInputRef}
+                                            onChange={handleImageUpload}
+                                            className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* 2. Twitter Link */}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1">Twitter/X リンク （画像が自動反映されます）</label>
+                                    <div className="relative group"><span className="absolute left-3 top-3 text-slate-400"><Icons.Link size={14} /></span><input type="text" value={rawLink} onChange={handleLinkChange} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all text-xs" placeholder="https://x.com/..." /></div>
                                 </div>
                             </div>
 
-                            {(showAdvancedIcon || (!formData.twitterId && formData.emoji)) && (
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block">代替アイコン</label>
-                                    <div className="flex flex-wrap gap-2 mb-3">
-                                        {THEME_COLORS.map(theme => (
-                                            <button key={theme.name} onClick={() => setFormData({...formData, colorTheme: theme.name})} className={`w-6 h-6 rounded-full border-2 ${theme.bg} ${formData.colorTheme === theme.name ? 'border-slate-800 scale-110' : 'border-transparent'}`} />
-                                        ))}
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {AVATAR_EMOJIS.map(emoji => (
-                                            <button key={emoji} onClick={() => setFormData({...formData, emoji: formData.emoji === emoji ? '' : emoji})} className={`text-lg w-8 h-8 flex items-center justify-center rounded hover:bg-white ${formData.emoji === emoji ? 'bg-white shadow-sm ring-1 ring-slate-200' : ''}`} >{emoji}</button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">名前 <span className="text-red-500">*</span></label>
-                                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all" placeholder="名前を入力" />
-                            </div>
+                            <div><label className="block text-xs font-bold text-slate-500 mb-1">名前 <span className="text-red-500">*</span></label><input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all" placeholder="名前を入力" /></div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 mb-1">誕生日</label>
                                 <input type="date" value={formData.birthday} onChange={(e) => setFormData({...formData, birthday: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all appearance-none" />
-                                <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.isTentative ? 'bg-amber-500 border-amber-500' : 'border-slate-300 bg-white'}`}>{formData.isTentative && <Icons.CheckCircle2 size={14} className="text-white" />}</div>
-                                    <input type="checkbox" className="hidden" checked={formData.isTentative} onChange={(e) => setFormData({...formData, isTentative: e.target.checked})} />
-                                    <span className="text-sm text-slate-600">この日付は予想です（不確定）</span>
-                                </label>
+                                <label className="flex items-center gap-2 mt-3 cursor-pointer select-none"><div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.isTentative ? 'bg-amber-500 border-amber-500' : 'border-slate-300 bg-white'}`}>{formData.isTentative && <Icons.CheckCircle2 size={14} className="text-white" />}</div><input type="checkbox" className="hidden" checked={formData.isTentative} onChange={(e) => setFormData({...formData, isTentative: e.target.checked})} /><span className="text-sm text-slate-600">この日付には確信がない</span></label>
                             </div>
-
-                            {/* Family Section with Edit */}
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-3">
-                                    <Icons.Baby size={16} /> 家族・子供 <span className="font-normal text-[10px] text-slate-400 ml-auto">タップで編集</span>
-                                </label>
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-3"><Icons.Baby size={16} /> 家族・子供 <span className="font-normal text-[10px] text-slate-400 ml-auto">タップで編集</span></label>
                                 <div className="space-y-2 mb-3">
                                     {sortedFamily.map(member => {
                                         const age = calculateAge(member.birthday);
                                         const isEditing = member.id === famId;
-                                        return (
-                                            <div key={member.id} onClick={() => editFamilyMember(member)} className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-colors cursor-pointer ${isEditing ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-slate-100 hover:bg-slate-100'}`}>
-                                                <div>
-                                                    <span className="font-bold mr-2">{member.name}</span>
-                                                    {age !== null && <span className="text-slate-500 text-xs bg-slate-100 px-1.5 py-0.5 rounded mr-2">{age}歳</span>}
-                                                    <span className="text-xs text-slate-400">{member.relation}</span>
-                                                </div>
-                                                <button onClick={(e) => removeFamilyMember(e, member.id)} className="text-slate-300 hover:text-red-500 p-2"><Icons.Minus size={16} /></button>
-                                            </div>
-                                        );
+                                        return <div key={member.id} onClick={() => editFamilyMember(member)} className={`flex items-center justify-between p-2 rounded-lg border text-sm transition-colors cursor-pointer ${isEditing ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-slate-100 hover:bg-slate-100'}`}><div><span className="font-bold mr-2">{member.name}</span>{age !== null && <span className="text-slate-500 text-xs bg-slate-100 px-1.5 py-0.5 rounded mr-2">{age}歳</span>}<span className="text-xs text-slate-400">{member.relation}</span></div><button onClick={(e) => removeFamilyMember(e, member.id)} className="text-slate-300 hover:text-red-500 p-2"><Icons.Minus size={16} /></button></div>;
                                     })}
                                 </div>
-                                
-                                {/* Input Area */}
                                 <div className={`p-3 rounded-lg border ${famId ? 'bg-blue-50 border-blue-200' : 'bg-slate-100 border-transparent'}`}>
                                     <div className="text-[10px] font-bold text-slate-400 mb-2">{famId ? '編集中...' : '新規追加'}</div>
-                                    <div className="flex gap-2 mb-2">
-                                        <input type="text" value={famName} onChange={e => setFamName(e.target.value)} placeholder="名前" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                                        <input type="date" value={famBirthday} onChange={e => setFamBirthday(e.target.value)} className="w-28 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input type="text" value={famRelation} onChange={e => setFamRelation(e.target.value)} placeholder="関係 (例: 長男)" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />
-                                        {famId && <button onClick={cancelFamEdit} className="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold">中止</button>}
-                                        <button onClick={saveFamilyMember} disabled={!famName} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50">{famId ? '更新' : '追加'}</button>
-                                    </div>
+                                    <div className="flex gap-2 mb-2"><input type="text" value={famName} onChange={e => setFamName(e.target.value)} placeholder="名前" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" /><input type="date" value={famBirthday} onChange={e => setFamBirthday(e.target.value)} className="w-28 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" /></div>
+                                    <div className="flex gap-2"><input type="text" value={famRelation} onChange={e => setFamRelation(e.target.value)} placeholder="関係" className="flex-1 p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400" />{famId && <button onClick={cancelFamEdit} className="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold">中止</button>}<button onClick={saveFamilyMember} disabled={!famName} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50">{famId ? '更新' : '追加'}</button></div>
                                 </div>
                             </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">メモ</label>
-                                <textarea value={formData.memo} onChange={(e) => setFormData({...formData, memo: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all text-sm h-20 resize-none" placeholder="備考..." />
-                            </div>
+                            <div><label className="block text-xs font-bold text-slate-500 mb-1">メモ (#タグ を入力)</label><textarea value={formData.memo} onChange={(e) => setFormData({...formData, memo: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-800 transition-all text-sm h-20 resize-none" placeholder="#会社 #大学 など..." /></div>
                         </div>
                     </div>
                     <div className="p-4 border-t border-slate-100 bg-white shrink-0">
@@ -418,112 +394,64 @@
             );
         };
 
-        // --- Detail View ---
         const FriendDetail = ({ friend, onClose, onEdit, onDelete }) => {
             const age = calculateAge(friend.birthday);
             const [deleteConfirm, setDeleteConfirm] = useState(false);
             const sortedFamily = useMemo(() => sortFamily(friend.family), [friend.family]);
+            const tags = extractTags(friend.memo);
 
             return (
                 <div className="flex flex-col h-full bg-white overflow-hidden">
                     <div className="h-28 w-full bg-slate-100 relative overflow-hidden shrink-0">
-                        {friend.twitterId && <img src={`https://unavatar.io/twitter/${friend.twitterId}`} className="w-full h-full object-cover opacity-30 blur-md scale-110" alt="" />}
+                        {friend.customImage ? <img src={friend.customImage} className="w-full h-full object-cover opacity-30 blur-md scale-110" alt="" /> : friend.twitterId ? <img src={`https://unavatar.io/twitter/${friend.twitterId}`} className="w-full h-full object-cover opacity-30 blur-md scale-110" alt="" /> : null}
                         <button onClick={onClose} className="absolute top-3 right-3 p-2 bg-black/10 hover:bg-black/20 text-slate-700 rounded-full transition-colors backdrop-blur-sm"><Icons.X size={20} /></button>
                     </div>
-                    
-                    {/* Scrollable Content Area */}
                     <div className="flex-1 overflow-y-auto px-6 pb-6 safe-bottom">
                         <div className="relative -mt-14 mb-4 flex justify-between items-end">
                             <div className="p-1.5 bg-white rounded-full shadow-sm"><SmartAvatar friend={friend} size="xl" /></div>
                             <button onClick={onEdit} className="mb-2 flex items-center gap-1 px-4 py-2 bg-slate-900 text-white rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform"><Icons.Edit2 size={14} /> 編集</button>
                         </div>
                         <h2 className="text-2xl font-bold text-slate-800 leading-tight flex items-center gap-2">{friend.name}</h2>
-                        {friend.twitterId ? (
-                            <a href={`https://x.com/${friend.twitterId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-500 text-sm font-medium mt-1 mb-6 transition-colors"><Icons.XLogo size={14} /> @{friend.twitterId} <Icons.ExternalLink size={12} /></a>
-                        ) : <div className="mb-4"/>}
+                        {friend.twitterId ? <a href={`https://x.com/${friend.twitterId}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-500 hover:text-blue-500 text-sm font-medium mt-1 mb-2 transition-colors"><Icons.XLogo size={14} /> @{friend.twitterId} <Icons.ExternalLink size={12} /></a> : <div className="mb-2"/>}
                         
+                        {tags.length > 0 && <div className="flex flex-wrap gap-1 mb-6">{tags.map(t => <span key={t} className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-md">#{t}</span>)}</div>}
+
                         <div className="space-y-6">
                             <div className={`flex items-start gap-4 p-4 rounded-2xl border ${friend.isTentative ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'}`}>
                                 <div className={`mt-1 ${friend.isTentative ? 'text-amber-500' : 'text-slate-400'}`}>{friend.isTentative ? <Icons.HelpCircle size={20} /> : <Icons.Calendar size={20} />}</div>
-                                <div>
-                                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${friend.isTentative ? 'text-amber-600' : 'text-slate-400'}`}>{friend.isTentative ? 'Birthday (推定)' : 'Birthday'}</p>
-                                    <p className="text-lg font-medium text-slate-700">{friend.birthday ? <>{friend.birthday} <span className="ml-1 text-slate-400 text-base">({age}歳)</span></> : '未設定'}</p>
-                                    {friend.isTentative && <p className="text-xs text-amber-600 mt-1">※この日付は不確定です</p>}
-                                </div>
+                                <div><p className={`text-xs font-bold uppercase tracking-wider mb-1 ${friend.isTentative ? 'text-amber-600' : 'text-slate-400'}`}>{friend.isTentative ? 'Birthday (推定)' : 'Birthday'}</p><p className="text-lg font-medium text-slate-700">{friend.birthday ? <>{friend.birthday} <span className="ml-1 text-slate-400 text-base">({age}歳)</span></> : '未設定'}</p></div>
                             </div>
-
-                            {/* Family View */}
                             {sortedFamily.length > 0 && (
                                 <div className="bg-blue-50 rounded-2xl border border-blue-100 p-4">
-                                    <div className="flex items-center gap-2 text-blue-800 font-bold mb-3 text-sm">
-                                        <Icons.Baby size={18} /> 家族情報
-                                    </div>
-                                    <div className="space-y-2">
-                                        {sortedFamily.map(member => {
-                                            const fAge = calculateAge(member.birthday);
-                                            return (
-                                                <div key={member.id} className="bg-white p-3 rounded-xl flex items-center justify-between shadow-sm">
-                                                    <div className="flex items-baseline gap-2">
-                                                        <span className="font-bold text-slate-700">{member.name}</span>
-                                                        {fAge !== null && <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{fAge}歳</span>}
-                                                    </div>
-                                                    <span className="text-xs text-slate-400">{member.relation}</span>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
+                                    <div className="flex items-center gap-2 text-blue-800 font-bold mb-3 text-sm"><Icons.Baby size={18} /> 家族情報</div>
+                                    <div className="space-y-2">{sortedFamily.map(m => { const fAge = calculateAge(m.birthday); return <div key={m.id} className="bg-white p-3 rounded-xl flex items-center justify-between shadow-sm"><div className="flex items-baseline gap-2"><span className="font-bold text-slate-700">{m.name}</span>{fAge !== null && <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{fAge}歳</span>}</div><span className="text-xs text-slate-400">{m.relation}</span></div> })}</div>
                                 </div>
                             )}
-
                             <div className="flex items-start gap-4 px-2">
                                 <div className="mt-1 text-slate-400"><Icons.Hash size={20} /></div>
                                 <div><p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Memo</p><p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm">{friend.memo || 'メモはありません'}</p></div>
                             </div>
                         </div>
-
                         <div className="mt-8 pt-4 border-t border-slate-100">
-                            {!deleteConfirm ? (
-                                <button onClick={() => setDeleteConfirm(true)} className="w-full py-3 text-red-500 text-sm font-medium hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center gap-2"><Icons.Trash2 size={16} /> 削除する</button>
-                            ) : (
-                                <div className="bg-red-50 p-4 rounded-xl animate-in slide-in-from-bottom-2 fade-in">
-                                    <div className="flex items-center gap-2 text-red-600 font-bold mb-3 justify-center"><Icons.AlertTriangle size={18} /> 本当に削除しますか？</div>
-                                    <div className="flex gap-3">
-                                        <button onClick={() => setDeleteConfirm(false)} className="flex-1 py-2 bg-white border border-red-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">キャンセル</button>
-                                        <button onClick={onDelete} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-600 shadow-sm">削除実行</button>
-                                    </div>
-                                </div>
-                            )}
+                            {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-3 text-red-500 text-sm font-medium hover:bg-red-50 rounded-xl transition-colors flex items-center justify-center gap-2"><Icons.Trash2 size={16} /> 削除する</button> : <div className="bg-red-50 p-4 rounded-xl animate-in slide-in-from-bottom-2 fade-in"><div className="flex items-center gap-2 text-red-600 font-bold mb-3 justify-center"><Icons.AlertTriangle size={18} /> 本当に削除しますか？</div><div className="flex gap-3"><button onClick={() => setDeleteConfirm(false)} className="flex-1 py-2 bg-white border border-red-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">キャンセル</button><button onClick={onDelete} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-600 shadow-sm">削除実行</button></div></div>}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- Month View Component ---
         const MonthView = ({ friends, onMonthClick }) => {
             const months = Array.from({ length: 12 }, (_, i) => i + 1);
-            
             return (
                 <div className="space-y-1 pb-4">
                     {months.map(m => {
-                        const people = friends.filter(f => getMonth(f.birthday) === m)
-                            .sort((a, b) => {
-                                // 年齢が高い順
-                                const ageA = calculateAge(a.birthday) || -1;
-                                const ageB = calculateAge(b.birthday) || -1;
-                                return ageB - ageA;
-                            });
-
+                        const people = friends.filter(f => getMonth(f.birthday) === m).sort((a, b) => (calculateAge(a.birthday)|| -1) < (calculateAge(b.birthday)|| -1) ? 1 : -1);
                         return (
                             <div key={m} onClick={() => people.length > 0 && onMonthClick(people, m)} className={`flex items-center h-14 px-2 rounded-xl transition-colors ${people.length > 0 ? 'hover:bg-slate-100 cursor-pointer active:scale-[0.99]' : 'opacity-30'}`}>
                                 <div className="w-10 font-bold text-slate-400 text-sm text-center flex-shrink-0">{m}月</div>
                                 <div className="flex-1 flex items-center gap-2 overflow-hidden pl-2">
-                                    {people.slice(0, 5).map(p => (
-                                        <SmartAvatar key={p.id} friend={p} size="sm" />
-                                    ))}
-                                    {people.length > 5 && (
-                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold border border-slate-200">...</div>
-                                    )}
+                                    {people.slice(0, 5).map(p => <SmartAvatar key={p.id} friend={p} size="sm" />)}
+                                    {people.length > 5 && <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold border border-slate-200">...</div>}
                                 </div>
                             </div>
                         );
@@ -532,7 +460,6 @@
             );
         };
 
-        // --- Month Detail Modal ---
         const MonthDetailList = ({ title, people, onClose, onSelect }) => (
             <div className="flex flex-col h-full max-h-[60vh] overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -545,10 +472,7 @@
                          return (
                             <div key={p.id} onClick={() => onSelect(p)} className="flex items-center gap-3 p-2 bg-white border border-slate-100 rounded-xl shadow-sm cursor-pointer hover:bg-slate-50">
                                 <SmartAvatar friend={p} size="sm" />
-                                <div>
-                                    <div className="font-bold text-sm">{p.name}</div>
-                                    <div className="text-xs text-slate-500">{p.birthday} ({age}歳)</div>
-                                </div>
+                                <div><div className="font-bold text-sm">{p.name}</div><div className="text-xs text-slate-500">{p.birthday} ({age}歳)</div></div>
                             </div>
                         );
                     })}
@@ -557,76 +481,65 @@
         );
 
         const App = () => {
-            const [friends, setFriends] = useState(() => {
-                try {
-                    const saved = localStorage.getItem(STORAGE_KEY);
-                    return saved ? JSON.parse(saved) : [];
-                } catch (e) { return []; }
-            });
-
+            const [friends, setFriends] = useState(() => { try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) : []; } catch (e) { return []; } });
             useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(friends)), [friends]);
-            
             const [selectedFriend, setSelectedFriend] = useState(null);
             const [isAddModalOpen, setIsAddModalOpen] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
             const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-            const [tab, setTab] = useState('age'); // 'age' or 'month'
-            const [selectedMonthData, setSelectedMonthData] = useState(null); // { month: 1, people: [] }
+            const [tab, setTab] = useState('age'); 
+            const [selectedMonthData, setSelectedMonthData] = useState(null);
+            const [filterTag, setFilterTag] = useState(null);
 
-            // Grouping for Age View
+            const allTags = useMemo(() => {
+                const tags = new Set();
+                friends.forEach(f => extractTags(f.memo).forEach(t => tags.add(t)));
+                return Array.from(tags).sort();
+            }, [friends]);
+
+            const filteredFriends = useMemo(() => {
+                if (!filterTag) return friends;
+                return friends.filter(f => extractTags(f.memo).includes(filterTag));
+            }, [friends, filterTag]);
+
             const friendsByAge = useMemo(() => {
                 const grouped = {};
-                friends.forEach(friend => {
+                filteredFriends.forEach(friend => {
                     const age = calculateAge(friend.birthday);
                     const key = age !== null ? age : '不明';
                     if (!grouped[key]) grouped[key] = [];
                     grouped[key].push(friend);
                 });
                 return Object.keys(grouped).sort((a, b) => (a === '不明' ? 1 : b === '不明' ? -1 : b - a)).map(age => ({ age, list: grouped[age] }));
-            }, [friends]);
+            }, [filteredFriends]);
 
-            const handleSave = (data) => {
-                if (selectedFriend && isEditing) {
-                    setFriends(friends.map(f => f.id === data.id ? data : f));
-                    setSelectedFriend(data); setIsEditing(false);
-                } else {
-                    setFriends([...friends, { ...data, id: Date.now().toString() }]);
-                    setIsAddModalOpen(false);
-                }
-            };
-
-            const handleDelete = (id) => {
-                setFriends(friends.filter(f => f.id !== id));
-                setSelectedFriend(null); setIsEditing(false);
-            };
-
-            const handleRestore = (data) => {
-                setFriends(data);
-            };
+            const handleSave = (data) => { if (selectedFriend && isEditing) { setFriends(friends.map(f => f.id === data.id ? data : f)); setSelectedFriend(data); setIsEditing(false); } else { setFriends([...friends, { ...data, id: Date.now().toString() }]); setIsAddModalOpen(false); } };
+            const handleDelete = (id) => { setFriends(friends.filter(f => f.id !== id)); setSelectedFriend(null); setIsEditing(false); };
+            const handleRestore = (data) => { setFriends(data); };
 
             return (
                 <div className="h-full flex flex-col">
+                    <AutoBackupNotification friends={friends} />
                     <header className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex justify-between items-center shadow-sm z-30 shrink-0 safe-top">
                         <button onClick={() => setIsBackupModalOpen(true)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><Icons.Settings size={24} /></button>
-                        <h1 className="text-lg font-bold text-slate-800">Friends Age</h1>
+                        <h1 className="text-lg font-bold text-slate-800">みんなのジェネレーション</h1>
                         <button onClick={() => setIsAddModalOpen(true)} className="bg-slate-900 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:bg-slate-700 active:scale-95 transition-all"><Icons.Plus size={20} /></button>
                     </header>
+                    
+                    {tab === 'age' && <TagList tags={allTags} selectedTag={filterTag} onSelectTag={setFilterTag} />}
 
                     <main className="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
                         {tab === 'age' ? (
                             <div className="space-y-8">
                                 {friendsByAge.map((group) => (
                                     <div key={group.age} className="relative flex gap-4">
-                                        <div className="flex flex-col items-center pt-2 w-14 flex-shrink-0">
-                                            <span className="text-2xl font-bold text-slate-700 leading-none">{group.age}</span>
-                                            <span className="text-[10px] text-slate-400">歳</span>
-                                            <div className="w-0.5 h-full bg-slate-200 mt-2 min-h-[1rem]"></div>
-                                        </div>
+                                        <div className="flex flex-col items-center pt-2 w-14 flex-shrink-0"><span className="text-2xl font-bold text-slate-700 leading-none">{group.age}</span><span className="text-[10px] text-slate-400">歳</span><div className="w-0.5 h-full bg-slate-200 mt-2 min-h-[1rem]"></div></div>
                                         <div className="flex-1 space-y-3 pb-2">
                                             {group.list.map(friend => {
                                                 const days = getNextBirthday(friend.birthday);
                                                 const isSoon = days !== null && days <= 30;
                                                 const sortedFam = sortFamily(friend.family);
+                                                const tags = extractTags(friend.memo);
                                                 return (
                                                     <button key={friend.id} onClick={() => setSelectedFriend(friend)} className="w-full bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md active:scale-[0.99] transition-all flex items-center gap-4 text-left relative overflow-hidden group">
                                                         {isSoon && <div className="absolute right-0 top-0 bg-amber-100 text-amber-700 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">もうすぐ</div>}
@@ -637,18 +550,8 @@
                                                                 {friend.twitterId && <span className="flex items-center gap-0.5 text-blue-400 bg-blue-50 px-1.5 rounded-md"><Icons.XLogo size={10} /> IDあり</span>}
                                                                 {friend.isTentative && <span className="flex items-center gap-0.5 text-amber-600 bg-amber-50 px-1.5 rounded-md font-medium"><Icons.HelpCircle size={10} /> 推定</span>}
                                                             </div>
-                                                            {sortedFam.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                                    {sortedFam.map(m => {
-                                                                        const age = calculateAge(m.birthday);
-                                                                        return (
-                                                                            <span key={m.id} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5">
-                                                                                <span className="opacity-70">👶</span> {m.name}{age !== null && `(${age})`}
-                                                                            </span>
-                                                                        )
-                                                                    })}
-                                                                </div>
-                                                            )}
+                                                            {sortedFam.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{sortedFam.map(m => { const age = calculateAge(m.birthday); return <span key={m.id} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><span className="opacity-70">👶</span> {m.name}{age !== null && `(${age})`}</span> })}</div>}
+                                                            {tags.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{tags.map(t => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${filterTag === t ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-400 border-slate-200'}`}>#{t}</span>)}</div>}
                                                         </div>
                                                     </button>
                                                 );
@@ -656,31 +559,27 @@
                                         </div>
                                     </div>
                                 ))}
-                                {friends.length === 0 && <div className="text-center py-20 text-slate-400">まだ友達がいません</div>}
+                                {filteredFriends.length === 0 && <div className="text-center py-20 text-slate-400">該当する友達がいません</div>}
                             </div>
                         ) : (
-                            <MonthView 
-                                friends={friends} 
-                                onMonthClick={(people, m) => setSelectedMonthData({ month: m, people })} 
-                            />
+                            <MonthView friends={friends} onMonthClick={(people, m) => setSelectedMonthData({ month: m, people })} />
                         )}
                     </main>
 
-                    {/* Bottom Navigation */}
                     <div className="bg-white border-t border-slate-200 shrink-0 safe-bottom flex justify-around p-2">
-                        <button onClick={() => setTab('age')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'age' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}>
-                            <Icons.Users size={20} />
-                            年齢順
-                        </button>
-                        <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}>
-                            <Icons.List size={20} />
-                            月別
-                        </button>
+                        <button onClick={() => setTab('age')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'age' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.Users size={20} /> 年齢順</button>
+                        <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
-                    {/* Modals */}
-                    {(isAddModalOpen || (selectedFriend && isEditing)) && <Modal onClose={() => { setIsAddModalOpen(false); setIsEditing(false); }}><FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} /></Modal>}
-                    {selectedFriend && !isEditing && <Modal onClose={() => setSelectedFriend(null)}><FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} /></Modal>}
+                    {(isAddModalOpen || selectedFriend) && (
+                        <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
+                            {(isAddModalOpen || isEditing) 
+                                ? <FriendForm initialData={isEditing ? selectedFriend : {}} onSave={handleSave} onCancel={() => { setIsAddModalOpen(false); setIsEditing(false); }} isNew={!isEditing} />
+                                : <FriendDetail friend={selectedFriend} onClose={() => setSelectedFriend(null)} onEdit={() => setIsEditing(true)} onDelete={() => handleDelete(selectedFriend.id)} />
+                            }
+                        </Modal>
+                    )}
+
                     {isBackupModalOpen && <Modal onClose={() => setIsBackupModalOpen(false)}><BackupModal friends={friends} onRestore={handleRestore} onClose={() => setIsBackupModalOpen(false)} /></Modal>}
                     {selectedMonthData && <Modal onClose={() => setSelectedMonthData(null)}><MonthDetailList title={`${selectedMonthData.month}月生まれ`} people={selectedMonthData.people} onClose={() => setSelectedMonthData(null)} onSelect={(p) => { setSelectedMonthData(null); setSelectedFriend(p); }} /></Modal>}
                 </div>
@@ -691,4 +590,3 @@
     </script>
 </body>
 </html>
-
