@@ -561,17 +561,18 @@
             ];
 
             return (
-                <div className="grid grid-cols-3 gap-3 pb-4">
+                <div className="space-y-1 pb-4">
                     {zodiacs.map((z, idx) => {
                         const people = friends.filter(f => getZodiacIndex(f.birthday) === idx).sort((a, b) => (calculateAge(a.birthday)|| -1) < (calculateAge(b.birthday)|| -1) ? 1 : -1);
                         return (
-                            <div key={z.name} onClick={() => people.length > 0 && onZodiacClick(people, z.name, z.icon)} className={`aspect-square rounded-2xl border flex flex-col items-center justify-center p-2 transition-all ${people.length > 0 ? 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer active:scale-[0.98] shadow-sm' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
-                                <div className="text-3xl mb-1">{z.icon}</div>
-                                <div className="text-xs font-bold text-slate-600 mb-2">{z.name}</div>
-                                <div className="flex -space-x-1.5 overflow-hidden h-6 items-center">
-                                    {people.slice(0, 3).map(p => <SmartAvatar key={p.id} friend={p} size="xs" className="ring-2 ring-white" />)}
-                                    {people.length > 3 && <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold border border-slate-200 ring-2 ring-white text-slate-400">+{people.length - 3}</div>}
-                                    {people.length === 0 && <span className="text-[10px] text-slate-300">-</span>}
+                            <div key={z.name} onClick={() => people.length > 0 && onZodiacClick(people, z.name, z.icon)} className={`flex items-center h-14 px-2 rounded-xl transition-colors ${people.length > 0 ? 'hover:bg-slate-100 cursor-pointer active:scale-[0.99]' : 'opacity-30'}`}>
+                                <div className="w-10 font-bold text-slate-400 text-sm text-center flex-shrink-0 flex flex-col items-center justify-center leading-none">
+                                    <span className="text-lg">{z.icon}</span>
+                                    <span className="text-[10px]">{z.name}</span>
+                                </div>
+                                <div className="flex-1 flex items-center gap-2 overflow-hidden pl-2">
+                                    {people.slice(0, 5).map(p => <SmartAvatar key={p.id} friend={p} size="sm" />)}
+                                    {people.length > 5 && <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold border border-slate-200">...</div>}
                                 </div>
                             </div>
                         );
