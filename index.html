@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     
-    <!-- ホーム画面アイコン: 「みん」改行「ジェネ」 (SVG Data URI) -->
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjojYjZlM2Y0Ij4KICA8dGV4dCB4PSI1MCUiIHk9IjQ1JSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXdlaWdodD0ibWVkaXVtIiBmb250LXNpemU9IjE4MCI+44G/44K3PC90ZXh0PgogIDx0ZXh0IHg9IjUwJSIgeT0iODUlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LXNpemU9IjE1MCI+44Kjj4Kn44ONPC90ZXh0Pgo8L3N2Zz4=">
+    <!-- ホーム画面アイコン: 更新（水色背景、白文字） -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBzdHlsZT0iYmFja2dyb3VuZC1jb2xvcjojMDBkN2Y5Ij4KICA8ZyBmb250LWZhbWlseT0iJ0hpcmFnaW5vIE1hcnUgR290aGljIFByb04nLCAnUm91bmRlZCBNcGMgMSttJywgJ3NhbnMtc2VyaWYnIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPgogICAgPHRleHQgeD0iNTAlIiB5PSI0MyUiIGZvbnQtc2l6ZT0iMTkwIiBsZXR0ZXItc3BhY2luZz0iLTEwIj7jgb/jgpM8L3RleHQ+CiAgICA8dGV4dCB4PSI1MCUiIHk9Ijg1JSIgZm9udC1zaXplPSIxNjAiIGxldHRlci1zcGFjaW5nPSItMTAiPuOCo+OCp+ODjTwvdGV4dD4KICA8L2c+Cjwvc3ZnPg==">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -43,6 +43,7 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        /* アニメーション定義 */
         @keyframes slideDown {
             from { transform: translateY(-100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -121,6 +122,26 @@
         const getMonth = (birthday) => {
             if (!birthday) return -1;
             return new Date(birthday).getMonth() + 1;
+        };
+
+        // --- New Logic: 干支と絵文字 ---
+        const getZodiac = (year) => {
+            const zodiacs = ['🐵','🐔','🐶','🐗','🐭','🐮','🐯','🐰','🐲','🐍','🐴','🐑'];
+            return zodiacs[year % 12];
+        };
+
+        const getFamilyEmoji = (relation, age) => {
+            const r = (relation || "").toLowerCase();
+            const isFemale = /母|妻|嫁|娘|姉|妹|婆|祖母/.test(r);
+            const isMale = /父|夫|旦那|息子|兄|弟|爺|祖父/.test(r);
+            
+            // 年齢がnullの場合は推測できないのでデフォルト
+            if (age === null) return isFemale ? '👩' : (isMale ? '👨' : '🧑');
+
+            if (age <= 1) return '👶';
+            if (age <= 12) return isFemale ? '👧' : (isMale ? '👦' : '🧒');
+            if (age >= 60) return isFemale ? '👵' : (isMale ? '👴' : '🧓');
+            return isFemale ? '👩' : (isMale ? '👨' : '🧑');
         };
 
         const extractTwitterId = (input) => {
@@ -580,9 +601,24 @@
                     <main className="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
                         {tab === 'age' ? (
                             <div className="space-y-8">
-                                {friendsByAge.map((group) => (
+                                {friendsByAge.map((group) => {
+                                    const ageNum = parseInt(group.age);
+                                    const birthYear = isNaN(ageNum) ? null : new Date().getFullYear() - ageNum;
+                                    const zodiac = birthYear ? getZodiac(birthYear) : null;
+                                    
+                                    return (
                                     <div key={group.age} className="relative flex gap-4">
-                                        <div className="flex flex-col items-center pt-2 w-14 flex-shrink-0"><span className="text-2xl font-bold text-slate-700 leading-none">{group.age}</span><span className="text-[10px] text-slate-400">歳</span><div className="w-0.5 h-full bg-slate-200 mt-2 min-h-[1rem]"></div></div>
+                                        <div className="flex flex-col items-center pt-2 w-14 flex-shrink-0">
+                                            <span className="text-2xl font-bold text-slate-700 leading-none">{group.age}</span>
+                                            <span className="text-[10px] text-slate-400">歳</span>
+                                            {birthYear && (
+                                                <div className="mt-1 flex flex-col items-center">
+                                                    <span className="text-[9px] text-slate-400 font-bold">{birthYear}</span>
+                                                    <span className="text-sm mt-0.5">{zodiac}</span>
+                                                </div>
+                                            )}
+                                            <div className="w-0.5 h-full bg-slate-200 mt-2 min-h-[1rem]"></div>
+                                        </div>
                                         <div className="flex-1 space-y-3 pb-2">
                                             {group.list.map(friend => {
                                                 const days = getNextBirthday(friend.birthday);
@@ -596,10 +632,13 @@
                                                         <div className="flex-1 min-w-0 py-1">
                                                             <h3 className="font-bold text-slate-800 truncate leading-tight mb-1 flex items-center gap-1">{friend.name}</h3>
                                                             <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                                                                {friend.twitterId && <span className="flex items-center gap-0.5 text-blue-400 bg-blue-50 px-1.5 rounded-md"><Icons.XLogo size={10} /> IDあり</span>}
                                                                 {friend.isTentative && <span className="flex items-center gap-0.5 text-amber-600 bg-amber-50 px-1.5 rounded-md font-medium"><Icons.HelpCircle size={10} /> 推定</span>}
                                                             </div>
-                                                            {sortedFam.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{sortedFam.map(m => { const age = calculateAge(m.birthday); return <span key={m.id} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><span className="opacity-70">👶</span> {m.name}{age !== null && `(${age})`}</span> })}</div>}
+                                                            {sortedFam.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{sortedFam.map(m => { 
+                                                                const age = calculateAge(m.birthday);
+                                                                const emoji = getFamilyEmoji(m.relation, age);
+                                                                return <span key={m.id} className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-0.5"><span className="opacity-90 text-sm">{emoji}</span> {m.name}{age !== null && `(${age})`}</span> 
+                                                            })}</div>}
                                                             {tags.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{tags.map(t => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${filterTag === t ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-400 border-slate-200'}`}>#{t}</span>)}</div>}
                                                         </div>
                                                     </button>
@@ -607,7 +646,7 @@
                                             })}
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                                 {filteredFriends.length === 0 && <div className="text-center py-20 text-slate-400">該当する友達がいません</div>}
                             </div>
                         ) : (
@@ -620,7 +659,6 @@
                         <button onClick={() => setTab('month')} className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 text-[10px] font-bold transition-colors ${tab === 'month' ? 'text-slate-900 bg-slate-100' : 'text-slate-400'}`}><Icons.List size={20} /> 月別</button>
                     </div>
 
-                    {/* SINGLE MODAL WRAPPER: ここが重要！ */}
                     {(isAddModalOpen || selectedFriend) && (
                         <Modal onClose={() => { setIsAddModalOpen(false); setSelectedFriend(null); setIsEditing(false); }}>
                             {(isAddModalOpen || isEditing) 
